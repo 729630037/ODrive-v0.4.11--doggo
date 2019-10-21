@@ -99,6 +99,9 @@ public:
     float theta_ = 0.0f;
     float gamma_ = 1.57f;
 
+    float d_theta_ = 0.0f;
+    float d_gamma_ = 0.0f;    
+
     // float vel_setpoint = 800.0f; <sensorless example>
     float vel_integrator_current_ = 0.0f;  // [A]
     float current_setpoint_ = 0.0f;        // [A]
@@ -114,6 +117,9 @@ public:
 
     float x_pos_ = 0;
     float y_pos_ = 0;
+
+    float d_x_pos_ = 0.0f;
+    float d_y_pos_ = 0.0f;    
 
     float tau_theta_ = 0;
     float tau_gamma_ = 0;
@@ -143,6 +149,10 @@ public:
             make_protocol_property("J11", &J11),
             make_protocol_property("theta", &theta_),
             make_protocol_property("gamma", &gamma_),
+            make_protocol_property("theta_vel", &d_theta_),
+            make_protocol_property("gamma_vel", &d_gamma_),
+            make_protocol_property("x_pos_vel", &d_x_pos_),
+            make_protocol_property("y_pos_vel", &d_y_pos_),
 
             make_protocol_object("config",
                 make_protocol_property("control_mode", &config_.control_mode),

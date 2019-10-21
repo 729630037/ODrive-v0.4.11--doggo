@@ -193,6 +193,9 @@ bool Controller::update(float pos_estimate, float vel_estimate, float* current_s
         float d_theta = d_alpha/2.0f + d_beta/2.0f;
         float d_gamma = d_alpha/2.0f - d_beta/2.0f;
 
+        d_theta_=d_theta;
+        d_gamma_=d_gamma;
+
         //leg parameters
         float L1 = 0.09f; // upper leg length (m)
         float L2 = 0.162f; // lower leg length (m)
@@ -224,6 +227,9 @@ bool Controller::update(float pos_estimate, float vel_estimate, float* current_s
 
         float d_x = jacobian[0][1]*d_gamma + jacobian[0][0]*d_theta; //derivative of x wrt time
         float d_y = jacobian[1][1]*d_gamma + jacobian[1][0]*d_theta;
+
+        d_x_pos_ = d_x;
+        d_y_pos_ = d_y;
 
         //x, y setpoints set manually here if doing x compliance, y setpoint should be same as curr y
         // and vice versa.
