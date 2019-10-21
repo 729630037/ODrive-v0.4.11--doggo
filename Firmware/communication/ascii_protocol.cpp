@@ -163,6 +163,66 @@ int parse_coupled_command(char* msg, int len,
     return 1;
 }
 
+/**
+* Parses a command for coupled position control
+* Assumes the message is in format "S<short1><short2>...<short12><checksum>\n"
+
+* @param msg        String: Message to parse
+* @param len        int: Number of bytes in the char array
+* @param sp_x   float&: Output parameter for x position set point
+* @param kp_x   float&: Output parameter for x position gain
+* @param kd_x   float&: Output parameter for x derivative gain
+* @param sp_y   float&: Output parameter for y position set point
+* @param kp_y   float&: Output parameter for y position gain
+* @param kp_y   float&: Output parameter for y derivative gain
+
+* @return      int:    1 if success, -1 if failed to find get full message or checksum failed
+*/
+int parse_XY_command(char* msg, int len,
+                        float& sp_x, float& kp_x, float& kd_x,
+                        float& sp_y, float& kp_y, float& kd_y) {
+    // Set multipliers:
+    const float POS_MULTIPLIER = 1000.0f;
+    // ^ gives 1 encoder count precision in commanding set points. Receivable range is -32.767 to 32.767 radians.
+    const float GAIN_MULTIPLIER = 100.0f;
+    // ^ gives 0.01 precision in setting gains. Receivable range is -327.67 to 327.67.
+
+    // Message: 1 byte for 'X', 12 bytes for values, 1 byte for checksum = 14 total bytes
+    if (len != 14) {
+        return -1; // error in message length
+    } else {
+        // extract the short values from the byte array
+        uint16_t sp_x_16 = (msg[2] << 8) | msg[1];
+        uint16_t kp_x_16 = (msg[4] << 8) | msg[3];
+        uint16_t kd_x_16 = (msg[6] << 8) | msg[5];
+        uint16_t sp_y_16 = (msg[8] << 8) | msg[7];
+        uint16_t kp_y_16 = (msg[10] << 8) | msg[9];
+        uint16_t kd_y_16 = (msg[12] << 8) | msg[11];
+        uint8_t rcvdCheckSum = msg[13];
+
+        // compute checksum, including the 'X'
+        uint8_t checkSum = 0;
+        for(int i = 0; i < len-1; i++) {
+            checkSum ^= msg[i];
+        }
+
+        // check if the computed check sum matches the received checksum
+        if (checkSum == rcvdCheckSum) {
+            // convert to float
+            sp_x = (float)((int16_t)(sp_x_16) / POS_MULTIPLIER);
+            kp_x = (float)((int16_t)(kp_x_16) / GAIN_MULTIPLIER);
+            kd_x = (float)((int16_t)(kd_x_16) / GAIN_MULTIPLIER);
+            sp_y = (float)((int16_t)(sp_y_16) / POS_MULTIPLIER);
+            kp_y = (float)((int16_t)(kp_y_16) / GAIN_MULTIPLIER);
+            kd_y = (float)((int16_t)(kd_y_16) / GAIN_MULTIPLIER);
+            return 1;
+        } else {
+            return -1;
+        }
+    }
+    return 1;
+}
+
 void send_motor_positions(StreamSink& response_channel) {
     /***** Send encoder readings *****/
     // Sending a current control command triggers the odrive
@@ -319,6 +379,25 @@ void ASCII_protocol_process_line(const uint8_t* buffer, size_t len, StreamSink& 
 
             send_motor_positions(response_channel);
         }
+    } else if (cmd[0] == 'X') { // XY control with gains
+        float sp_x, kp_x, kd_x;
+        float sp_y, kp_y, kd_y;
+
+        int result = parse_XY_command(cmd, len, sp_x, kp_x, kd_x, sp_y, kp_y, kd_y);
+
+        if (result != 1) {
+            respond(response_channel, use_checksum, "Failed to parse coupled command: ");
+            respond(response_channel, use_checksum, cmd);
+        } else {
+            axes[0]->controller_.set_xy_setpoints(sp_x, sp_y);
+            axes[0]->controller_.set_xy_gains(kp_x, kd_x, kp_y, kd_y);
+
+            axes[1]->controller_.set_xy_setpoints(sp_x, sp_y);
+            axes[1]->controller_.set_xy_gains(kp_x, kd_x, kp_y, kd_y);
+
+            send_motor_positions(response_channel);
+        }
+        
     } else if (cmd[0] == 'h') {  // Help
         respond(response_channel, use_checksum, "Please see documentation for more details");
         respond(response_channel, use_checksum, "");
