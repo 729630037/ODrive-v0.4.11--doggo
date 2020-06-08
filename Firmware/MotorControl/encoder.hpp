@@ -32,7 +32,7 @@ public:
                                     // In this case the encoder will enter ready
                                     // state as soon as the index is found.
         bool zero_count_on_find_idx = true;
-        int32_t cpr = 4000;   // Default resolution of CUI-AMT102 encoder,
+        int32_t cpr = 4096;   // Default resolution of CUI-AMT102 encoder,
         int32_t offset = 0;        // Offset between encoder count and rotor electrical phase
         float offset_float = 0.0f; // Sub-count phase alignment offset
         bool enable_phase_interpolation = true; // Use velocity to interpolate inside the count state

@@ -72,23 +72,23 @@ void Controller::set_coupled_gains(float kp_theta, float kd_theta, float kp_gamm
 #endif
 }
 
-void Controller::set_xy_setpoints(float x_setpoint, float y_setpoint) {
+void Controller::set_xz_setpoints(float x_setpoint, float z_setpoint) {
   x_setpoint_ = x_setpoint;
-  y_setpoint_ = y_setpoint;
-  config_.control_mode = CTRL_MODE_XY_CONTROL;
+  z_setpoint_ = z_setpoint;
+  config_.control_mode = CTRL_MODE_XZ_CONTROL;
 #ifdef DEBUG_PRINT
-    printf("XY_CONTROL %3.3f %3.3f\n", x_setpoint_, y_setpoint_);
+    printf("XZ_CONTROL %3.3f %3.3f\n", x_setpoint_, y_setpoint_);
 #endif
 }
 
-void Controller::set_xy_gains(float kp_x, float kd_x, float kp_y, float kd_y) {
+void Controller::set_xz_gains(float kp_x, float kd_x, float kp_z, float kd_z) {
   config_.kp_x = kp_x;
   config_.kd_x = kd_x;
-  config_.kp_y = kp_y;
-  config_.kd_y = kd_y;
-  config_.control_mode = CTRL_MODE_XY_CONTROL;
+  config_.kp_z = kp_z;
+  config_.kd_z = kd_z;
+  config_.control_mode = CTRL_MODE_XZ_CONTROL;
   #ifdef DEBUG_PRINT
-    printf("XY_CONTROL %3.3f %3.3f %3.3f %3.3f\n", kp_x, kd_x, kp_y, kd_y);
+    printf("XZ_CONTROL %3.3f %3.3f %3.3f %3.3f\n", kp_x, kd_x, kp_z, kd_z);
   #endif
 }
 
@@ -164,6 +164,9 @@ bool Controller::update(float pos_estimate, float vel_estimate, float* current_s
         float d_theta = d_alpha/2.0f + d_beta/2.0f;
         float d_gamma = d_alpha/2.0f - d_beta/2.0f;
 
+        d_theta_=d_theta;
+        d_gamma_=d_gamma;
+
         float p_term_theta = config_.kp_theta * (theta_setpoint_ - theta);
         float d_term_theta = config_.kd_theta * (0.0f - d_theta);
 
@@ -173,11 +176,14 @@ bool Controller::update(float pos_estimate, float vel_estimate, float* current_s
         float tau_theta = p_term_theta + d_term_theta;
         float tau_gamma = p_term_gamma + d_term_gamma;
 
+        tau_theta_ = tau_theta;
+        tau_gamma_ = tau_gamma;        
+
         axes[0]->controller_.current_setpoint_ = tau_theta*0.5f + tau_gamma*0.5f;
         axes[1]->controller_.current_setpoint_ = tau_theta*0.5f - tau_gamma*0.5f;
 
         Iq = current_setpoint_;
-    } else if(config_.control_mode == CTRL_MODE_XY_CONTROL) { //change condition for now...
+    } else if(config_.control_mode == CTRL_MODE_XZ_CONTROL) { //change condition for now...
 ///////////////////////////////////////////////////////////////////////////////////
 //current theta, gamma
         float alpha = encoder_to_rad(axes[0]->encoder_.pos_estimate_) + M_PI/2.0f;
@@ -218,45 +224,45 @@ bool Controller::update(float pos_estimate, float vel_estimate, float* current_s
         J10 = jacobian[1][0];
         J11 = jacobian[1][1];
 
-        //current x, y
+        //current x, z
         float x = L * sin(theta); //How to get leg_direction here?
-        float y = L * cos(theta);
+        float z = L * cos(theta);
 
         x_pos_ = x;
-        y_pos_ = y;
+        z_pos_ = z;
 
         float d_x = jacobian[0][1]*d_gamma + jacobian[0][0]*d_theta; //derivative of x wrt time
-        float d_y = jacobian[1][1]*d_gamma + jacobian[1][0]*d_theta;
+        float d_z = jacobian[1][1]*d_gamma + jacobian[1][0]*d_theta;
 
         d_x_pos_ = d_x;
-        d_y_pos_ = d_y;
+        d_z_pos_ = d_z;
 
-        //x, y setpoints set manually here if doing x compliance, y setpoint should be same as curr y
+        //x, z setpoints set manually here if doing x compliance, z setpoint should be same as curr z
         // and vice versa.
         float x_sp = x_setpoint_; //make x set point 0
-        float y_sp = y_setpoint_; //
+        float z_sp = z_setpoint_; //
 
-        //gains wanted for x and y
-        //when doing x compliance, set y kp's and kd's to 0... no desire to move in those directions
+        //gains wanted for x and z
+        //when doing x compliance, set z kp's and kd's to 0... no desire to move in those directions
         float kp_x = config_.kp_x;
-        float kp_y = config_.kp_y;
         float kd_x = config_.kd_x;
-        float kd_y = config_.kd_y;
+        float kp_z = config_.kp_z;
+        float kd_z = config_.kd_z;
 
         float p_term_x = kp_x * (x_sp - x);
         float d_term_x = kd_x * (0.0f - d_x);
 
-        float p_term_y = kp_y * (y_sp - y);
-        float d_term_y = kd_y * (0.0f - d_y);
+        float p_term_z = kp_z * (z_sp - z);
+        float d_term_z = kd_z * (0.0f - d_z);
 
         float force_x = p_term_x + d_term_x;
-        float force_y = p_term_y + d_term_y;
+        float force_z = p_term_z + d_term_z;
         force_x_ = force_x;
-        force_y_ = force_y;
+        force_z_ = force_z;
         
 
-        float tau_theta = force_x * jacobian[0][0] + force_y * jacobian[1][0]; //mutliplying by jacobian transpose
-        float tau_gamma = force_x * jacobian[0][1] + force_y * jacobian[1][1];
+        float tau_theta = force_x * jacobian[0][0] + force_z * jacobian[1][0]; //mutliplying by jacobian transpose
+        float tau_gamma = force_x * jacobian[0][1] + force_z * jacobian[1][1];
         tau_theta_ = tau_theta;
         tau_gamma_ = tau_gamma;
 

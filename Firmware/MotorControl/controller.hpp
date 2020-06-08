@@ -20,7 +20,7 @@ public:
         CTRL_MODE_VELOCITY_CONTROL = 2,
         CTRL_MODE_POSITION_CONTROL = 3,
         CTRL_MODE_COUPLED_CONTROL = 4,
-        CTRL_MODE_XY_CONTROL = 5,
+        CTRL_MODE_XZ_CONTROL = 5,
     };
 
     struct Config_t {
@@ -38,8 +38,8 @@ public:
 
         float kp_x = 0;
         float kd_x = 0;
-        float kp_y = 0;
-        float kd_y = 0;
+        float kp_z = 0;
+        float kd_z = 0;
 
         float gear_ratio = 3.0;
     };
@@ -54,8 +54,8 @@ public:
 
     void set_coupled_setpoints(float theta_setpoint, float gamma_setpoint);
     void set_coupled_gains(float kp_theta, float kd_theta, float kp_gamma, float kd_gamma);
-    void set_xy_setpoints(float x_setpoint, float y_setpoint);
-    void set_xy_gains(float kp_x, float kd_x, float kp_y, float kd_y);
+    void set_xz_setpoints(float x_setpoint, float z_setpoint);
+    void set_xz_gains(float kp_x, float kd_x, float kp_z, float kd_z);
 
     float encoder_to_rad(float x);
 
@@ -110,16 +110,16 @@ public:
     float gamma_setpoint_ = M_PI/2.0f;
 
     float x_setpoint_ = 0.0f;
-    float y_setpoint_ = 0.13f;
+    float z_setpoint_ = 0.13f;
 
     float force_x_ = 0;
-    float force_y_ = 0;
+    float force_z_ = 0;
 
     float x_pos_ = 0;
-    float y_pos_ = 0;
+    float z_pos_ = 0.134f;
 
     float d_x_pos_ = 0.0f;
-    float d_y_pos_ = 0.0f;    
+    float d_z_pos_ = 0.0f;    
 
     float tau_theta_ = 0;
     float tau_gamma_ = 0;
@@ -136,11 +136,11 @@ public:
             make_protocol_property("theta_setpoint", &theta_setpoint_),
             make_protocol_property("gamma_setpoint", &gamma_setpoint_),
             make_protocol_property("x_setpoint", &x_setpoint_),
-            make_protocol_property("y_setpoint", &y_setpoint_),
+            make_protocol_property("z_setpoint", &z_setpoint_),
             make_protocol_property("force_x", &force_x_),
-            make_protocol_property("force_y", &force_y_),
+            make_protocol_property("force_z", &force_z_),
             make_protocol_property("x_pos", &x_pos_),
-            make_protocol_property("y_pos", &y_pos_),
+            make_protocol_property("z_pos", &z_pos_),
             make_protocol_property("tau_theta", &tau_theta_),
             make_protocol_property("tau_gamma", &tau_gamma_),
             make_protocol_property("J00", &J00),
@@ -152,7 +152,7 @@ public:
             make_protocol_property("theta_vel", &d_theta_),
             make_protocol_property("gamma_vel", &d_gamma_),
             make_protocol_property("x_pos_vel", &d_x_pos_),
-            make_protocol_property("y_pos_vel", &d_y_pos_),
+            make_protocol_property("z_pos_vel", &d_z_pos_),
 
             make_protocol_object("config",
                 make_protocol_property("control_mode", &config_.control_mode),
@@ -166,8 +166,8 @@ public:
                 make_protocol_property("kd_gamma", &config_.kd_gamma),
                 make_protocol_property("kp_x", &config_.kp_x),
                 make_protocol_property("kd_x", &config_.kd_x),
-                make_protocol_property("kp_y", &config_.kp_y),
-                make_protocol_property("kd_y", &config_.kd_y),
+                make_protocol_property("kp_z", &config_.kp_z),
+                make_protocol_property("kd_z", &config_.kd_z),
                 make_protocol_property("gear_ratio", &config_.gear_ratio)
             ),
             make_protocol_function("set_pos_setpoint", *this, &Controller::set_pos_setpoint,
@@ -182,14 +182,19 @@ public:
             make_protocol_function("set_coupled_setpoints", *this, &Controller::set_coupled_setpoints,
                 "theta_setpoint",
                 "gamma_setpoint"),
-            make_protocol_function("set_xy_setpoints", *this, &Controller::set_xy_setpoints,
+            make_protocol_function("set_xz_setpoints", *this, &Controller::set_xz_setpoints,
                 "x_setpoint",
-                "y_setpoint"),
-                make_protocol_function("set_xy_gains", *this, &Controller::set_xy_gains,
+                "z_setpoint"),
+            make_protocol_function("set_xz_gains", *this, &Controller::set_xz_gains,
                 "kp_x",
                 "kd_x",
-                "kp_y",
-                "kd_y"),
+                "kp_z",
+                "kd_z"),          
+            make_protocol_function("set_coupled_gains", *this, &Controller::set_coupled_gains,
+                "kp_theta",
+                "kd_theta",
+                "kp_gamma",
+                "kd_gamma"),
             make_protocol_function("start_anticogging_calibration", *this, &Controller::start_anticogging_calibration)
         );
     }
